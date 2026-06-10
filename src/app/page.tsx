@@ -1,64 +1,132 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { Expense } from "@/types/expense";
+import ExpenseForm from "@/components/ExpenseForm";
+import ExpenseList from "@/components/ExpenseList";
+import SummaryCards from "@/components/SummaryCards";
 
 export default function Home() {
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editExpense, setEditExpense] = useState<Expense | null>(null);
+  const [activeTab, setActiveTab] = useState<"add" | "summary" | "history">("add");
+  const [configError, setConfigError] = useState(false);
+
+  const fetchExpenses = useCallback(async () => {
+    try {
+      const res = await fetch("/api/expenses");
+      if (res.status === 503) {
+        setConfigError(true);
+        setExpenses([]);
+        return;
+      }
+      const data = await res.json();
+      setConfigError(false);
+      setExpenses(Array.isArray(data) ? data : []);
+    } catch {
+      setExpenses([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses]);
+
+  const handleSave = () => {
+    setEditExpense(null);
+    setActiveTab("history");
+    fetchExpenses();
+  };
+
+  const handleEdit = (expense: Expense) => {
+    setEditExpense(expense);
+    setActiveTab("add");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const total = expenses.reduce((s, e) => s + e.amount, 0);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-slate-100">
+      {/* Header */}
+      <header className="bg-indigo-700 text-white">
+        <div className="max-w-2xl mx-auto px-4 py-5 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Wayanad Trip 🌿</h1>
+            <p className="text-indigo-200 text-sm mt-0.5">Expense Tracker · 6 people</p>
+          </div>
+          <div className="text-right">
+            <p className="text-indigo-200 text-xs uppercase tracking-wide">Total</p>
+            <p className="text-2xl font-bold">
+              ₹{total.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        {/* Tab bar — part of header so it's always at the top */}
+        <div className="max-w-2xl mx-auto px-4 pb-0">
+          <div className="flex">
+            {[
+              { key: "add", label: editExpense ? "✏️ Edit" : "➕ Add" },
+              { key: "summary", label: "📊 Summary" },
+              { key: "history", label: `🧾 History${expenses.length > 0 ? ` (${expenses.length})` : ""}` },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => {
+                  if (key !== "add") setEditExpense(null);
+                  setActiveTab(key as "add" | "summary" | "history");
+                }}
+                className={`px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                  activeTab === key
+                    ? "border-white text-white"
+                    : "border-transparent text-indigo-300 hover:text-white"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      {/* Config warning banner */}
+      {configError && (
+        <div className="max-w-2xl mx-auto px-4 pt-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+            <strong>Supabase not connected.</strong> Add your credentials to{" "}
+            <code className="bg-amber-100 px-1 rounded">.env.local</code> and restart the server.
+          </div>
+        </div>
+      )}
+
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+        {activeTab === "add" && (
+          <ExpenseForm
+            onSave={handleSave}
+            editExpense={editExpense}
+            onCancelEdit={() => { setEditExpense(null); setActiveTab("history"); }}
+          />
+        )}
+
+        {activeTab === "summary" && (
+          <SummaryCards expenses={expenses} />
+        )}
+
+        {activeTab === "history" && (
+          loading ? (
+            <div className="text-center py-12 text-gray-500 text-sm">Loading transactions…</div>
+          ) : (
+            <ExpenseList
+              expenses={expenses}
+              onEdit={handleEdit}
+              onDelete={fetchExpenses}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          )
+        )}
       </main>
     </div>
   );
