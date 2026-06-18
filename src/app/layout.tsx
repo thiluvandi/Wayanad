@@ -17,7 +17,9 @@ export const metadata: Metadata = {
   description: "Shared expense tracker for the Wayanad trip",
   icons: {
     icon: '/favicon.png',
-  },   // ← make sure this comma is here
+    apple: '/favicon.png',  // ← for iOS
+  },
+  manifest: '/manifest.json',  // ← for Android
 };
 
 export default function RootLayout({
