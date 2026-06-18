@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   description: "Shared expense tracker for the Wayanad trip",
   icons: {
     icon: '/favicon.png',
+  },   // ← make sure this comma is here
 };
 
 export default function RootLayout({
