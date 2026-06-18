@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Wayanad Trip · Expense Tracker",
   description: "Shared expense tracker for the Wayanad trip",
+  icons: {
+    icon: '/favicon.png',
 };
 
 export default function RootLayout({
